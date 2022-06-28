@@ -1,0 +1,22 @@
+.videos-container {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  height: 100vh;
+}
+.video-container {
+  display: flex;
+  min-width: 50%;
+  flex-direction: column;
+  align-items: center;
+}
+
+.video-container video {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: black;
+}
+
+.video-container:nth-of-type(2) {
+  margin-top: -20px
+}
