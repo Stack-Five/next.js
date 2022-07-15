@@ -39,6 +39,7 @@ export default function Room({ userName, roomName }: Props) {
   const partnerVideo = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
+    rtcConnection.current = createPeerConnection()
     pusherRef.current = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       authEndpoint: '/api/pusher/auth',
       auth: {
@@ -125,14 +126,12 @@ export default function Room({ userName, roomName }: Props) {
           userVideo.current!.onloadedmetadata = () => {
             userVideo.current!.play()
           }
-          // 1. we create a connection
-          rtcConnection.current = createPeerConnection()
-          // 2. We add tracks to the connection
+          // We add tracks to the connection
           userStream.current?.getTracks().forEach((track) => {
             rtcConnection.current?.addTrack(track, userStream.current!)
           })
-          // 3. Host creates offer
-          rtcConnection.current
+          // Host creates offer
+          rtcConnection.current!
             .createOffer()
             .then((offer) => {
               rtcConnection.current!.setLocalDescription(offer)
@@ -177,14 +176,13 @@ export default function Room({ userName, roomName }: Props) {
         userVideo.current!.onloadedmetadata = () => {
           userVideo.current!.play()
         }
-        rtcConnection.current = createPeerConnection()
         userStream.current?.getTracks().forEach((track) => {
           rtcConnection.current?.addTrack(track, userStream.current!)
         })
 
-        rtcConnection.current.setRemoteDescription(offer)
+        rtcConnection.current!.setRemoteDescription(offer)
 
-        rtcConnection.current
+        rtcConnection.current!
           .createAnswer()
           .then((answer) => {
             rtcConnection.current!.setLocalDescription(answer)
