@@ -13,6 +13,9 @@ const ICE_SERVERS = {
   // you can add TURN servers here too
   iceServers: [
     {
+      urls: 'stun:openrelay.metered.ca:80'
+    },
+    {
       urls: 'stun:stun.l.google.com:19302',
     },
     {
@@ -56,17 +59,15 @@ export default function Room({ userName, roomName }: Props) {
         if (members.count === 1) {
           // when subscribing, if you are the first member, you are the host
           host.current = true
-          handleRoomJoined()
         }
-        if (members.count === 2) {
-          handleRoomJoined()
-        }
+        
         // example only supports 2 users per call
         if (members.count > 2) {
           // 3+ person joining will get sent back home
           // Can handle however you'd like
           router.push('/')
         }
+        handleRoomJoined()
       }
     )
 
@@ -119,7 +120,7 @@ export default function Room({ userName, roomName }: Props) {
     navigator.mediaDevices
       .getUserMedia({
         audio: true,
-        video: { width: 500, height: 500 },
+        video: true,
       })
       .then((stream) => {
         /* use the stream */
@@ -149,48 +150,57 @@ export default function Room({ userName, roomName }: Props) {
 
     // We implement our onTrack method for when we receive tracks
     connection.ontrack = handleTrackEvent
+    connection.onicecandidateerror = (e) => console.log(e)
     return connection
   }
 
 
   const initiateCall = () => {
-    rtcConnection.current = createPeerConnection()
-    // Host creates offer
-    rtcConnection
-      .current!.createOffer()
-      .then((offer) => {
-        rtcConnection.current!.setLocalDescription(offer)
-        // 4. Send offer to other peer via pusher
-        // Note: 'client-' prefix means this event is not being sent directly from the client
-        // This options needs to be turned on in Pusher app settings
-        channelRef.current?.trigger('client-offer', offer)
-      })
-      .catch((error) => {
-        console.log(error)
-      })
+    if (host.current) {
+      rtcConnection.current = createPeerConnection()
+      // Host creates offer
+      userStream.current?.getTracks().forEach((track) => {
+        rtcConnection.current?.addTrack(track, userStream.current!);
+      });
+      rtcConnection
+        .current!.createOffer()
+        .then((offer) => {
+          console.log('sending offer')
+          rtcConnection.current!.setLocalDescription(offer)
+          // 4. Send offer to other peer via pusher
+          // Note: 'client-' prefix means this event is not being sent directly from the client
+          // This options needs to be turned on in Pusher app settings
+          channelRef.current?.trigger('client-offer', offer)
+        })
+        .catch((error) => {
+          console.log(error)
+        })
+    }
   }
 
   const handleReceivedOffer = (offer: RTCSessionDescriptionInit) => {
+    console.log('received offer')
     rtcConnection.current = createPeerConnection()
     userStream.current?.getTracks().forEach((track) => {
       rtcConnection.current?.addTrack(track, userStream.current!)
     })
 
-    rtcConnection.current!.setRemoteDescription(offer)
-
+    rtcConnection.current.setRemoteDescription(offer)
     rtcConnection
-      .current!.createAnswer()
+      .current.createAnswer()
       .then((answer) => {
+        console.log('sending answer')
         rtcConnection.current!.setLocalDescription(answer)
-        // return sentToPusher('answer', answer)
         channelRef.current?.trigger('client-answer', answer)
       })
       .catch((error) => {
         console.log(error)
       })
-  }
+    console.log(rtcConnection.current)
 
+  }
   const handleAnswer = (answer: RTCSessionDescriptionInit) => {
+    console.log('receiving answer')
     rtcConnection
       .current!.setRemoteDescription(answer)
       .catch((error) => console.log(error))
