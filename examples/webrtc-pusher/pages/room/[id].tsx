@@ -127,7 +127,7 @@ export default function Room({ userName, roomName }: Props) {
         }
         if (!host.current) {
           // the 2nd peer joining will tell to host they are ready
-          channelRef.current.trigger('client-ready')
+          channelRef.current!.trigger('client-ready')
         }
       })
       .catch((err) => {
