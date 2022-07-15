@@ -39,7 +39,6 @@ export default function Room({ userName, roomName }: Props) {
   const partnerVideo = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    rtcConnection.current = createPeerConnection()
     pusherRef.current = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
       authEndpoint: '/api/pusher/auth',
       auth: {
@@ -57,6 +56,10 @@ export default function Room({ userName, roomName }: Props) {
         if (members.count === 1) {
           // when subscribing, if you are the first member, you are the host
           host.current = true
+          handleRoomJoined()
+        }
+        if (members.count === 2) {
+          handleRoomJoined()
         }
         // example only supports 2 users per call
         if (members.count > 2) {
@@ -67,12 +70,6 @@ export default function Room({ userName, roomName }: Props) {
       }
     )
 
-    // When a new member joins the chat but only 2 members
-    channelRef.current.bind('pusher:member_added', (data: any) => {
-      if (channelRef.current?.members.count === 2) {
-        initiateCall()
-      }
-    })
     // when a member leaves the chat
     channelRef.current.bind('pusher:member_removed', () => {
       handlePeerLeaving()
@@ -87,6 +84,9 @@ export default function Room({ userName, roomName }: Props) {
         }
       }
     )
+
+    // When the second peer tells host they are ready to start the call
+    channelRef.current.bind('client-ready', () => initiateCall())
 
     channelRef.current.bind(
       'client-answer',
@@ -112,43 +112,28 @@ export default function Room({ userName, roomName }: Props) {
     }
   }, [userName, roomName])
 
-  const initiateCall = () => {
-    if (host.current) {
-      navigator.mediaDevices
-        .getUserMedia({
-          audio: true,
-          video: { width: 1280, height: 720 },
-        })
-        .then((stream) => {
-          /* use the stream */
-          userStream.current = stream
-          userVideo.current!.srcObject = stream
-          userVideo.current!.onloadedmetadata = () => {
-            userVideo.current!.play()
-          }
-          // We add tracks to the connection
-          userStream.current?.getTracks().forEach((track) => {
-            rtcConnection.current?.addTrack(track, userStream.current!)
-          })
-          // Host creates offer
-          rtcConnection.current!
-            .createOffer()
-            .then((offer) => {
-              rtcConnection.current!.setLocalDescription(offer)
-              // 4. Send offer to other peer via pusher
-              // Note: 'client-' prefix means this event is not being sent directly from the client
-              // This options needs to be turned on in Pusher app settings
-              channelRef.current?.trigger('client-offer', offer)
-            })
-            .catch((error) => {
-              console.log(error)
-            })
-        })
-        .catch((error) => {
-          /* handle the error */
-          console.log(error)
-        })
-    }
+  const handleRoomJoined = () => {
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: true,
+        video: { width: 500, height: 500 },
+      })
+      .then((stream) => {
+        /* use the stream */
+        userStream.current = stream
+        userVideo.current!.srcObject = stream
+        userVideo.current!.onloadedmetadata = () => {
+          userVideo.current!.play()
+        }
+        if (!host.current) {
+          // the 2nd peer joining will tell to host they are ready
+          channelRef.current.trigger('client-ready')
+        }
+      })
+      .catch((err) => {
+        /* handle the error */
+        console.log(err)
+      })
   }
 
   const createPeerConnection = () => {
@@ -163,38 +148,40 @@ export default function Room({ userName, roomName }: Props) {
     return connection
   }
 
-  const handleReceivedOffer = (offer: RTCSessionDescriptionInit) => {
-    navigator.mediaDevices
-      .getUserMedia({
-        audio: true,
-        video: { width: 1280, height: 720 },
-      })
-      .then((stream) => {
-        /* use the stream */
-        userStream.current = stream
-        userVideo.current!.srcObject = stream
-        userVideo.current!.onloadedmetadata = () => {
-          userVideo.current!.play()
-        }
-        userStream.current?.getTracks().forEach((track) => {
-          rtcConnection.current?.addTrack(track, userStream.current!)
-        })
 
-        rtcConnection.current!.setRemoteDescription(offer)
-
-        rtcConnection.current!
-          .createAnswer()
-          .then((answer) => {
-            rtcConnection.current!.setLocalDescription(answer)
-            // return sentToPusher('answer', answer)
-            channelRef.current?.trigger('client-answer', answer)
-          })
-          .catch((error) => {
-            console.log(error)
-          })
+  const initiateCall = () => {
+    rtcConnection.current = createPeerConnection()
+    // Host creates offer
+    rtcConnection
+      .current!.createOffer()
+      .then((offer) => {
+        rtcConnection.current!.setLocalDescription(offer)
+        // 4. Send offer to other peer via pusher
+        // Note: 'client-' prefix means this event is not being sent directly from the client
+        // This options needs to be turned on in Pusher app settings
+        channelRef.current?.trigger('client-offer', offer)
       })
       .catch((error) => {
-        /* handle the error */
+        console.log(error)
+      })
+  }
+
+  const handleReceivedOffer = (offer: RTCSessionDescriptionInit) => {
+    rtcConnection.current = createPeerConnection()
+    userStream.current?.getTracks().forEach((track) => {
+      rtcConnection.current?.addTrack(track, userStream.current!)
+    })
+
+    rtcConnection.current!.setRemoteDescription(offer)
+
+    rtcConnection
+      .current!.createAnswer()
+      .then((answer) => {
+        rtcConnection.current!.setLocalDescription(answer)
+        // return sentToPusher('answer', answer)
+        channelRef.current?.trigger('client-answer', answer)
+      })
+      .catch((error) => {
         console.log(error)
       })
   }
