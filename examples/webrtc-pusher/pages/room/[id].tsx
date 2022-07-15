@@ -58,14 +58,12 @@ export default function Room({ userName, roomName }: Props) {
           host.current = true;
         }
         // example only supports 2 users per call
-        if (members.count <= 2) {
-          handleJoiningRoom();
-        }
         if (members.count > 2) {
           // 3+ person joining will get sent back home
           // Can handle however you'd like
           router.push("/");
         }
+        handleJoiningRoom();
       }
     );
 
@@ -279,7 +277,7 @@ export default function Room({ userName, roomName }: Props) {
     <div>
       <div className={styles["videos-container"]}>
         <div className={styles["video-container"]}>
-          <video autoPlay ref={userVideo} />
+          <video autoPlay ref={userVideo} muted />
           <div>
             <button onClick={toggleMic} type="button">
               {micActive ? "Mute Mic" : "UnMute Mic"}
