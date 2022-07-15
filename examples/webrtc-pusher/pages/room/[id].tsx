@@ -86,7 +86,10 @@ export default function Room({ userName, roomName }: Props) {
     )
 
     // When the second peer tells host they are ready to start the call
-    channelRef.current.bind('client-ready', () => initiateCall())
+    channelRef.current.bind('client-ready', () => {
+      console.log('received client ready')
+      initiateCall()
+    })
 
     channelRef.current.bind(
       'client-answer',
@@ -127,6 +130,7 @@ export default function Room({ userName, roomName }: Props) {
         }
         if (!host.current) {
           // the 2nd peer joining will tell to host they are ready
+          console.log('triggering client ready')
           channelRef.current!.trigger('client-ready', {})
         }
       })
@@ -193,6 +197,7 @@ export default function Room({ userName, roomName }: Props) {
   }
 
   const handleICECandidateEvent = async (event: RTCPeerConnectionIceEvent) => {
+    console.log('received ice event')
     if (event.candidate) {
       // return sentToPusher('ice-candidate', event.candidate)
       channelRef.current?.trigger('client-ice-candidate', event.candidate)
@@ -200,6 +205,7 @@ export default function Room({ userName, roomName }: Props) {
   }
 
   const handlerNewIceCandidateMsg = (incoming: RTCIceCandidate) => {
+    console.log('handling ice event')
     // We cast the incoming candidate to RTCIceCandidate
     const candidate = new RTCIceCandidate(incoming)
     rtcConnection
