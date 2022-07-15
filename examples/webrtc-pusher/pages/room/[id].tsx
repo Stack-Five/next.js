@@ -120,7 +120,7 @@ export default function Room({ userName, roomName }: Props) {
     navigator.mediaDevices
       .getUserMedia({
         audio: true,
-        video: true,
+        video: { width: 1280, height: 720 },
       })
       .then((stream) => {
         /* use the stream */
