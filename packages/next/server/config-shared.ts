@@ -90,17 +90,14 @@ export interface ExperimentalConfig {
   swcFileReading?: boolean
   cpus?: number
   sharedPool?: boolean
-  plugins?: boolean
   profiling?: boolean
   isrFlushToDisk?: boolean
-  reactMode?: 'legacy' | 'concurrent' | 'blocking'
   workerThreads?: boolean
   pageEnv?: boolean
   optimizeCss?: boolean
   nextScriptWorkers?: boolean
   scrollRestoration?: boolean
   externalDir?: boolean
-  conformance?: boolean
   appDir?: boolean
   amp?: {
     optimizer?: any
@@ -122,7 +119,6 @@ export interface ExperimentalConfig {
     unoptimized?: boolean
     allowFutureImage?: boolean
   }
-  middlewareSourceMaps?: boolean
   modularizeImports?: Record<
     string,
     {
@@ -522,7 +518,6 @@ export const defaultConfig: NextConfig = {
         (os.cpus() || { length: 1 }).length) - 1
     ),
     sharedPool: true,
-    plugins: false,
     profiling: false,
     isrFlushToDisk: true,
     workerThreads: false,
@@ -539,14 +534,22 @@ export const defaultConfig: NextConfig = {
     appDir: false,
     // default to 50MB limit
     isrMemoryCacheSize: 50 * 1024 * 1024,
+    incrementalCacheHandlerPath: undefined,
     serverComponents: false,
     fullySpecified: false,
     outputFileTracingRoot: process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT || '',
     images: {
       remotePatterns: [],
     },
+    swcTraceProfiling: false,
     forceSwcTransforms: false,
+    swcPlugins: undefined,
+    swcMinifyDebugOptions: undefined,
     largePageDataBytes: 128 * 1000, // 128KB by default
+    disablePostcssPresetEnv: undefined,
+    amp: undefined,
+    urlImports: undefined,
+    modularizeImports: undefined,
   },
 }
 
@@ -556,4 +559,20 @@ export async function normalizeConfig(phase: string, config: any) {
   }
   // Support `new Promise` and `async () =>` as return values of the config export
   return await config
+}
+
+export function isServerRuntime(value?: string): value is ServerRuntime {
+  return (
+    value === undefined || value === 'nodejs' || value === 'experimental-edge'
+  )
+}
+
+export function validateConfig(userConfig: NextConfig): {
+  errors?: Array<any> | null
+} {
+  const configValidator = require('next/dist/next-config-validate.js')
+  configValidator(userConfig)
+  return {
+    errors: configValidator.errors,
+  }
 }

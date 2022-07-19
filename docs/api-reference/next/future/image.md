@@ -15,9 +15,9 @@ description: Try the latest Image Optimization with the experimental `next/futur
 
 The `next/future/image` component is an experiment to improve both the performance and developer experience of `next/image` by using the native `<img>` element with better default behavior.
 
-This new component is considered experimental and therefore not covered by semver, and may cause unexpected or broken application behavior. Furthermore, it may not work in every browser due to native features that are not polyfilled.
+This new component is considered experimental and therefore not covered by semver, and may cause unexpected or broken application behavior. This component uses browser native [lazy loading](https://caniuse.com/loading-lazy-attr), which may fallback to eager loading for older browsers before Safari 15.4. When using the blur-up placeholder, older browsers before Safari 12 will fallback to empty placeholder. When using styles with `width`/`height` of `auto`, it is possible to cause [Layout Shift](https://web.dev/cls/) on older browsers before [Chrome 79](https://chromestatus.com/feature/5695266130755584), [Firefox 69](https://bugzilla.mozilla.org/show_bug.cgi?id=1547231), and [Safari 14.2](https://bugs.webkit.org/show_bug.cgi?id=201641). For more details, see [this MDN video](https://www.youtube.com/watch?v=4-d_SoCHeWE).
 
-In order to try it out today, you must add the following to your `next.config.js` file, as shown below:
+To use `next/future/image`, add the following to your `next.config.js` file:
 
 ```js
 module.exports = {
@@ -204,50 +204,6 @@ Try it out:
 - [Demo the color effect with `blurDataURL` prop](https://image-component.nextjs.gallery/color)
 
 You can also [generate a solid color Data URL](https://png-pixel.com) to match the image.
-
-**Example pointing to a DOM element**
-
-```jsx
-import Image from 'next/future/image'
-import React from 'react'
-
-const lazyRoot = React.useRef(null)
-
-const Example = () => (
-  <div ref={lazyRoot} style={{ overflowX: 'scroll', width: '500px' }}>
-    <Image lazyRoot={lazyRoot} src="/one.jpg" width="500" height="500" />
-    <Image lazyRoot={lazyRoot} src="/two.jpg" width="500" height="500" />
-  </div>
-)
-```
-
-**Example pointing to a React component**
-
-```jsx
-import Image from 'next/future/image'
-import React from 'react'
-
-const Container = React.forwardRef((props, ref) => {
-  return (
-    <div ref={ref} style={{ overflowX: 'scroll', width: '500px' }}>
-      {props.children}
-    </div>
-  )
-})
-
-const Example = () => {
-  const lazyRoot = React.useRef(null)
-
-  return (
-    <Container ref={lazyRoot}>
-      <Image lazyRoot={lazyRoot} src="/one.jpg" width="500" height="500" />
-      <Image lazyRoot={lazyRoot} src="/two.jpg" width="500" height="500" />
-    </Container>
-  )
-}
-```
-
-[Learn more](https://developer.mozilla.org/en-US/docs/Web/API/IntersectionObserver/root)
 
 ### unoptimized
 

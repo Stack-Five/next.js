@@ -228,13 +228,13 @@ function generateImgAttrs({
 }
 
 function getInt(x: unknown): number | undefined {
-  if (typeof x === 'number') {
+  if (typeof x === 'number' || typeof x === 'undefined') {
     return x
   }
-  if (typeof x === 'string') {
+  if (typeof x === 'string' && /^[0-9]+$/.test(x)) {
     return parseInt(x, 10)
   }
-  return undefined
+  return NaN
 }
 
 // See https://stackoverflow.com/q/39777833/266535 for why we use this ref
@@ -301,7 +301,7 @@ export default function Image({
   blurDataURL,
   ...all
 }: ImageProps) {
-  if (!experimentalFuture) {
+  if (!experimentalFuture && process.env.NODE_ENV !== 'test') {
     throw new Error(
       `The "next/future/image" component is experimental and may be subject to breaking changes. To enable this experiment, please include \`experimental: { images: { allowFutureImage: true } }\` in your next.config.js file.`
     )
@@ -382,12 +382,22 @@ export default function Image({
         )}`
       )
     }
-    if (
-      (typeof widthInt !== 'undefined' && isNaN(widthInt)) ||
-      (typeof heightInt !== 'undefined' && isNaN(heightInt))
-    ) {
+    if (typeof widthInt === 'undefined') {
       throw new Error(
-        `Image with src "${src}" has invalid "width" or "height" property. These should be numeric values.`
+        `Image with src "${src}" is missing required "width" property.`
+      )
+    } else if (isNaN(widthInt)) {
+      throw new Error(
+        `Image with src "${src}" has invalid "width" property. Expected a numeric value in pixels but received "${width}".`
+      )
+    }
+    if (typeof heightInt === 'undefined') {
+      throw new Error(
+        `Image with src "${src}" is missing required "height" property.`
+      )
+    } else if (isNaN(heightInt)) {
+      throw new Error(
+        `Image with src "${src}" has invalid "height" property. Expected a numeric value in pixels but received "${height}".`
       )
     }
     if (!VALID_LOADING_VALUES.includes(loading)) {
@@ -497,7 +507,7 @@ export default function Image({
     }
   }
   const imgStyle = Object.assign({}, style)
-  const svgBlurPlaceholder = `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' xmlns%3Axlink='http%3A//www.w3.org/1999/xlink' viewBox='0 0 ${widthInt} ${heightInt}'%3E%3Cfilter id='b' color-interpolation-filters='sRGB'%3E%3CfeGaussianBlur stdDeviation='50'%3E%3C/feGaussianBlur%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='1 1'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Cimage filter='url(%23b)' x='0' y='0' height='100%25' width='100%25' href='${blurDataURL}'%3E%3C/image%3E%3C/svg%3E");`
+  const svgBlurPlaceholder = `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http%3A//www.w3.org/2000/svg' viewBox='0 0 ${widthInt} ${heightInt}'%3E%3Cfilter id='b' color-interpolation-filters='sRGB'%3E%3CfeGaussianBlur stdDeviation='50'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='1 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Cimage filter='url(%23b)' x='0' y='0' height='100%25' width='100%25' href='${blurDataURL}'/%3E%3C/svg%3E")`
   const blurStyle =
     placeholder === 'blur' && !blurComplete
       ? {
