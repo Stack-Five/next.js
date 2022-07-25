@@ -1,5 +1,5 @@
 import '../styles/globals.css';
-import { Component, PropsWithRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { AppProps } from 'next/app';
 
@@ -14,7 +14,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   };
   return (
     <Component
-      handleLoginChange={(userName: string, roomName: string) => {
+      handleCredChange={(userName: string, roomName: string) => {
         setUserName(userName);
         setRoomName(roomName);
       }}
