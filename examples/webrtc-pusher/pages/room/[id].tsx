@@ -64,7 +64,7 @@ export default function Room({ userName, roomName }: Props) {
         // example only supports 2 users per call
         if (members.count > 2) {
           // 3+ person joining will get sent back home
-          // Can handle however you'd like
+          // Can handle this however you'd like
           router.push('/')
         }
         handleRoomJoined()
@@ -87,8 +87,8 @@ export default function Room({ userName, roomName }: Props) {
     )
 
     // When the second peer tells host they are ready to start the call
+    // This happens after the second peer has grabbed their media
     channelRef.current.bind('client-ready', () => {
-      console.log('received client ready')
       initiateCall()
     })
 
@@ -123,7 +123,7 @@ export default function Room({ userName, roomName }: Props) {
         video: { width: 1280, height: 720 },
       })
       .then((stream) => {
-        /* use the stream */
+        /* store reference to the stream and provide it to the video element */
         userStream.current = stream
         userVideo.current!.srcObject = stream
         userVideo.current!.onloadedmetadata = () => {
@@ -131,7 +131,6 @@ export default function Room({ userName, roomName }: Props) {
         }
         if (!host.current) {
           // the 2nd peer joining will tell to host they are ready
-          console.log('triggering client ready')
           channelRef.current!.trigger('client-ready', {})
         }
       })
@@ -165,7 +164,6 @@ export default function Room({ userName, roomName }: Props) {
       rtcConnection
         .current!.createOffer()
         .then((offer) => {
-          console.log('sending offer')
           rtcConnection.current!.setLocalDescription(offer)
           // 4. Send offer to other peer via pusher
           // Note: 'client-' prefix means this event is not being sent directly from the client
@@ -179,9 +177,9 @@ export default function Room({ userName, roomName }: Props) {
   }
 
   const handleReceivedOffer = (offer: RTCSessionDescriptionInit) => {
-    console.log('received offer')
     rtcConnection.current = createPeerConnection()
     userStream.current?.getTracks().forEach((track) => {
+      // Adding tracks to the RTCPeerConnection to give peer access to it
       rtcConnection.current?.addTrack(track, userStream.current!)
     })
 
@@ -189,25 +187,21 @@ export default function Room({ userName, roomName }: Props) {
     rtcConnection
       .current.createAnswer()
       .then((answer) => {
-        console.log('sending answer')
         rtcConnection.current!.setLocalDescription(answer)
         channelRef.current?.trigger('client-answer', answer)
       })
       .catch((error) => {
         console.log(error)
       })
-    console.log(rtcConnection.current)
 
   }
   const handleAnswer = (answer: RTCSessionDescriptionInit) => {
-    console.log('receiving answer')
     rtcConnection
       .current!.setRemoteDescription(answer)
       .catch((error) => console.log(error))
   }
 
   const handleICECandidateEvent = async (event: RTCPeerConnectionIceEvent) => {
-    console.log('received ice event')
     if (event.candidate) {
       // return sentToPusher('ice-candidate', event.candidate)
       channelRef.current?.trigger('client-ice-candidate', event.candidate)
@@ -215,7 +209,6 @@ export default function Room({ userName, roomName }: Props) {
   }
 
   const handlerNewIceCandidateMsg = (incoming: RTCIceCandidate) => {
-    console.log('handling ice event')
     // We cast the incoming candidate to RTCIceCandidate
     const candidate = new RTCIceCandidate(incoming)
     rtcConnection
@@ -238,7 +231,7 @@ export default function Room({ userName, roomName }: Props) {
   const handlePeerLeaving = () => {
     host.current = true
     if (partnerVideo.current?.srcObject) {
-      ;(partnerVideo.current!.srcObject as MediaStream)
+      ;(partnerVideo.current.srcObject as MediaStream)
         .getTracks()
         .forEach((track) => track.stop()) // Stops receiving all track of Peer.
     }
